@@ -218,15 +218,22 @@ fn apply_profile_key_based_endpoint_overrides(
         return;
     }
 
-    // Allow explicit override via environment variable
-    if let Some(override_base) = env_override("JCODE_MINIMAX_API_BASE") {
+    // Allow explicit override via environment variable or minimax.env file
+    if let Some(override_base) = std::env::var("JCODE_MINIMAX_API_BASE")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| load_env_value_from_env_or_config("JCODE_MINIMAX_API_BASE", "minimax.env"))
+    {
         if let Some(normalized) = normalize_api_base(&override_base) {
             resolved.api_base = normalized;
         }
-        if let Some(override_url) = env_override("JCODE_MINIMAX_SETUP_URL") {
-            resolved.setup_url = override_url;
-        }
-        return;
+    }
+    if let Some(override_url) = std::env::var("JCODE_MINIMAX_SETUP_URL")
+        .ok()
+        .filter(|v| !v.trim().is_empty())
+        .or_else(|| load_env_value_from_env_or_config("JCODE_MINIMAX_SETUP_URL", "minimax.env"))
+    {
+        resolved.setup_url = override_url;
     }
 
     let key = api_key_hint
@@ -235,14 +242,9 @@ fn apply_profile_key_based_endpoint_overrides(
         .map(ToString::to_string)
         .or_else(|| load_env_value_from_env_or_config(profile.api_key_env, profile.env_file));
 
-    if key
-        .as_deref()
-        .map(|key| key.trim_start().starts_with("sk-cp-"))
-        .unwrap_or(false)
-    {
-        resolved.api_base = MINIMAX_CHINA_API_BASE.to_string();
-        resolved.setup_url = MINIMAX_CHINA_SETUP_URL.to_string();
-    }
+    // Note: sk-cp- prefix detection for China endpoint is intentionally removed.
+    // Token Plan (Plus/Max/Ultra) keys work on the international endpoint.
+    // To force China endpoint, set JCODE_MINIMAX_API_BASE=https://api.minimaxi.com/v1
 }
 
 pub fn resolve_openai_compatible_profile_selection(input: &str) -> Option<OpenAiCompatibleProfile> {

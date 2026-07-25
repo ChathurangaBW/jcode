@@ -194,42 +194,34 @@ fn resolved_named_profile_skips_non_chat_models_when_picking_newest_default() {
 }
 
 #[test]
-fn minimax_token_plan_keys_resolve_to_china_endpoint_without_changing_international_default() {
+fn minimax_token_plan_keys_resolve_to_international_endpoint_by_default() {
     let _lock = crate::storage::lock_test_env();
     let _guard = EnvGuard::save(&["OPENAI_API_KEY", "JCODE_MINIMAX_API_BASE"]);
     crate::env::remove_var("OPENAI_API_KEY");
     crate::env::remove_var("JCODE_MINIMAX_API_BASE");
 
-    let international = resolve_openai_compatible_profile(MINIMAX_PROFILE);
-    assert_eq!(international.api_base, "https://api.minimax.io/v1");
-    assert_eq!(
-        international.setup_url,
-        "https://platform.minimax.io/docs/guides/text-generation"
-    );
-
-    let china = resolve_openai_compatible_profile_with_api_key_hint(
-        MINIMAX_PROFILE,
-        Some("sk-cp-test-token"),
-    );
-    assert_eq!(china.api_base, MINIMAX_CHINA_API_BASE);
-    assert_eq!(china.setup_url, MINIMAX_CHINA_SETUP_URL);
-}
-
-#[test]
-fn minimax_api_base_override_takes_precedence_over_china_auto_detection() {
-    let _lock = crate::storage::lock_test_env();
-    let _guard = EnvGuard::save(&["OPENAI_API_KEY", "JCODE_MINIMAX_API_BASE"]);
-    crate::env::remove_var("OPENAI_API_KEY");
-
-    // Set override to international endpoint even with China key prefix
-    std::env::set_var("JCODE_MINIMAX_API_BASE", "https://api.minimax.io/v1");
-
-    // Even with sk-cp- prefix, the explicit override should win
+    // Token Plan keys (sk-cp- prefix) now default to international endpoint
     let resolved = resolve_openai_compatible_profile_with_api_key_hint(
         MINIMAX_PROFILE,
         Some("sk-cp-test-token"),
     );
     assert_eq!(resolved.api_base, "https://api.minimax.io/v1");
+}
+
+#[test]
+fn minimax_api_base_override_takes_precedence() {
+    let _lock = crate::storage::lock_test_env();
+    let _guard = EnvGuard::save(&["OPENAI_API_KEY", "JCODE_MINIMAX_API_BASE"]);
+    crate::env::remove_var("OPENAI_API_KEY");
+
+    // Set override to China endpoint
+    std::env::set_var("JCODE_MINIMAX_API_BASE", "https://api.minimaxi.com/v1");
+
+    let resolved = resolve_openai_compatible_profile_with_api_key_hint(
+        MINIMAX_PROFILE,
+        Some("sk-cp-test-token"),
+    );
+    assert_eq!(resolved.api_base, "https://api.minimaxi.com/v1");
 }
 
 #[test]
