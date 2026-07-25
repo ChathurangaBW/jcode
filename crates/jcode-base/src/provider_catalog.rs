@@ -218,6 +218,17 @@ fn apply_profile_key_based_endpoint_overrides(
         return;
     }
 
+    // Allow explicit override via environment variable
+    if let Some(override_base) = env_override("JCODE_MINIMAX_API_BASE") {
+        if let Some(normalized) = normalize_api_base(&override_base) {
+            resolved.api_base = normalized;
+        }
+        if let Some(override_url) = env_override("JCODE_MINIMAX_SETUP_URL") {
+            resolved.setup_url = override_url;
+        }
+        return;
+    }
+
     let key = api_key_hint
         .map(str::trim)
         .filter(|key| !key.is_empty())
